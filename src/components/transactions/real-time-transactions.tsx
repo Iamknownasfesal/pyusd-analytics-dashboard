@@ -14,6 +14,7 @@ import {
 import { PYUSD_CONTRACT_ADDRESS, PYUSD_ABI } from "@/lib/blockchain";
 import { useTransfers, Transfer } from "@/hooks/use-api-queries";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAddress } from "@/components/address/address-context";
 
 export function RealTimeTransactionsTable() {
   const [isConnected, setIsConnected] = useState(false);
@@ -25,6 +26,7 @@ export function RealTimeTransactionsTable() {
   const providerRef = useRef<ethers.JsonRpcProvider | null>(null);
   const filterIdRef = useRef<string | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { openAddressModal } = useAddress();
 
   // Use Tanstack Query for fetching transfers
   const { data: transfers = [], isLoading } = useTransfers(
@@ -374,25 +376,21 @@ export function RealTimeTransactionsTable() {
                   </a>
                 </TableCell>
                 <TableCell className="font-mono text-xs">
-                  <a
-                    href={`https://etherscan.io/address/${transfer.from}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline text-blue-600 dark:text-blue-400"
+                  <button
+                    onClick={() => openAddressModal(transfer.from)}
+                    className="hover:underline text-blue-600 dark:text-blue-400 cursor-pointer"
                   >
                     {transfer.from.substring(0, 6)}...
                     {transfer.from.substring(38)}
-                  </a>
+                  </button>
                 </TableCell>
                 <TableCell className="font-mono text-xs">
-                  <a
-                    href={`https://etherscan.io/address/${transfer.to}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline text-blue-600 dark:text-blue-400"
+                  <button
+                    onClick={() => openAddressModal(transfer.to)}
+                    className="hover:underline text-blue-600 dark:text-blue-400 cursor-pointer"
                   >
                     {transfer.to.substring(0, 6)}...{transfer.to.substring(38)}
-                  </a>
+                  </button>
                 </TableCell>
                 <TableCell>{Number(transfer.value).toLocaleString()}</TableCell>
                 <TableCell className="text-right">

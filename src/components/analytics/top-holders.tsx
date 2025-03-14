@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTopHolders } from "@/hooks/use-api-queries";
+import { useAddress } from "@/components/address/address-context";
 
 // Colors for the pie chart
 const COLORS = [
@@ -37,6 +38,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 
 export function TopHolders() {
   const { data: holderData, isLoading, error } = useTopHolders(5);
+  const { openAddressModal } = useAddress();
 
   // Loading skeleton
   if (isLoading) {
@@ -180,15 +182,13 @@ export function TopHolders() {
                       {holder.address === "Others" ? (
                         <span>Other Holders</span>
                       ) : (
-                        <a
-                          href={`https://etherscan.io/address/${holder.address}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline text-blue-600 dark:text-blue-400"
+                        <button
+                          onClick={() => openAddressModal(holder.address)}
+                          className="hover:underline text-blue-600 dark:text-blue-400 cursor-pointer"
                         >
                           {holder.address.substring(0, 6)}...
                           {holder.address.substring(holder.address.length - 4)}
-                        </a>
+                        </button>
                       )}
                     </td>
                     <td className="py-3 text-right font-medium">

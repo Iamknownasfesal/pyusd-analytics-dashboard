@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { queryClient } from "@/lib/react-query";
+import { AddressProvider } from "@/components/address/address-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,7 +36,7 @@ export default function RootLayout({
           enableSystem={true}
         >
           <QueryClientProvider client={queryClient}>
-            {children}
+            <AddressProvider>{children}</AddressProvider>
             <Toaster />
             <ReactQueryDevtools initialIsOpen={false} />
           </QueryClientProvider>
