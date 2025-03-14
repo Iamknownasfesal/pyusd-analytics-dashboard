@@ -1,103 +1,119 @@
-import Image from "next/image";
+import { Suspense } from "react";
+import { DashboardLayout } from "@/components/dashboard/layout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TransactionVolume } from "@/components/analytics/transaction-volume";
+import { TopHolders } from "@/components/analytics/top-holders";
+import { TokenSupply } from "@/components/analytics/token-supply";
+import dynamic from "next/dynamic";
+import { PYUSDOverview } from "@/components/dashboard/pyusd-overview";
+import { GasStatistics } from "@/components/dashboard/gas-statistics";
+import { LoadingFallback } from "@/components/ui/loading-fallback";
+import { Metadata } from "next";
 
-export default function Home() {
+export const metadata: Metadata = {
+  title: "PYUSD Analytics Dashboard",
+  description:
+    "Real-time monitoring and analytics for PayPal USD (PYUSD) transactions",
+};
+
+// Dynamically import the client component with no SSR
+const RealTimeTransactionsTable = dynamic(
+  () =>
+    import("@/components/transactions/real-time-transactions").then(
+      (mod) => mod.RealTimeTransactionsTable
+    ),
+  { ssr: true }
+);
+
+export default function DashboardPage() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <DashboardLayout>
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Real-time monitoring and analytics for PayPal USD (PYUSD) transactions
+        </p>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="live">Transactions</TabsTrigger>
+            <TabsTrigger value="supply">Supply</TabsTrigger>
+            <TabsTrigger value="holders">Holders</TabsTrigger>
+            <TabsTrigger value="volume">Transaction Volume</TabsTrigger>
+            <TabsTrigger value="network">Network</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            <Suspense fallback={<LoadingFallback />}>
+              <PYUSDOverview />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="live" className="space-y-6">
+            <div className="flex flex-col space-y-1 mb-4">
+              <h2 className="text-2xl font-bold tracking-tight">
+                Live PYUSD Transactions
+              </h2>
+              <p className="text-muted-foreground">
+                Watch PYUSD transactions as they happen in real-time on the
+                Ethereum blockchain.
+              </p>
+            </div>
+            <RealTimeTransactionsTable />
+          </TabsContent>
+
+          <TabsContent value="supply" className="space-y-6">
+            <Suspense fallback={<LoadingFallback />}>
+              <div className="flex flex-col space-y-1 mb-4">
+                <h2 className="text-2xl font-bold tracking-tight">
+                  PYUSD Supply
+                </h2>
+                <p className="text-muted-foreground">
+                  Total supply and supply changes of PYUSD stablecoin since
+                  launch
+                </p>
+              </div>
+              <TokenSupply />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="holders" className="space-y-6">
+            <Suspense fallback={<LoadingFallback />}>
+              <div className="flex flex-col space-y-1 mb-4">
+                <h2 className="text-2xl font-bold tracking-tight">
+                  PYUSD Holders
+                </h2>
+                <p className="text-muted-foreground">
+                  Analysis of PayPal USD (PYUSD) token distribution and top
+                  holders.
+                </p>
+              </div>
+              <TopHolders />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="volume" className="space-y-6">
+            <Suspense fallback={<LoadingFallback />}>
+              <div className="flex flex-col space-y-1 mb-4">
+                <h2 className="text-2xl font-bold tracking-tight">
+                  Transaction Volume
+                </h2>
+                <p className="text-muted-foreground">
+                  Historical transaction volume for PYUSD token.
+                </p>
+              </div>
+              <TransactionVolume />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="network" className="space-y-6">
+            <Suspense fallback={<LoadingFallback />}>
+              <GasStatistics />
+            </Suspense>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
   );
 }

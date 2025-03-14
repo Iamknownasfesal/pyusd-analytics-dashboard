@@ -1,36 +1,138 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PYUSD Analytics Dashboard
+
+A comprehensive real-time analytics dashboard for monitoring PayPal USD (PYUSD) stablecoin transactions on the Ethereum blockchain. This project is built as part of the Stackup, PayPal and Google Cloud Bounty Challenge.
+
+## Features
+
+- Real-time PYUSD transaction monitoring
+- Detailed transaction history and analysis
+- Network congestion metrics related to PYUSD
+- Gas usage comparison with other stablecoins
+- Top holders analysis and distribution visualization via Google BigQuery
+- Interactive charts and graphs for data visualization
+
+## Tech Stack
+
+- **Frontend**: Next.js 14 with App Router
+- **Styling**: Tailwind CSS and shadcn/ui
+- **Charts**: Recharts
+- **Blockchain Interface**: Ethers.js with GCP Blockchain RPC
+- **Data Analytics**: Google BigQuery for blockchain data analysis
+- **Package Manager**: Bun
+- **Data Fetching**: Server Components with Suspense
+- **State Management**: React Context API
+
+## Environment Variables
+
+To enable full functionality of this dashboard, you need to set up the following environment variables:
+
+1. Create a `.env.local` file in the root of the project with:
+
+```
+NEXT_PUBLIC_RPC_URL=https://mainnet.infura.io/v3/YOUR_INFURA_KEY
+```
+
+## Google Cloud Setup
+
+This dashboard uses Google Cloud services for blockchain data analysis:
+
+### Setting up Google Cloud Authentication
+
+1. Create a Google Cloud Platform (GCP) account if you don't have one
+2. Create a new project in the GCP Console
+3. Enable the BigQuery API for your project
+4. Set up authentication using one of these methods:
+
+#### Option 1: Application Default Credentials (for development or when deployed on GCP)
+
+```bash
+# Install Google Cloud CLI
+gcloud auth application-default login
+```
+
+#### Option 2: Service Account Key (for production or non-GCP deployments)
+
+1. Create a service account in GCP Console
+2. Grant the service account BigQuery permissions (at least BigQuery Data Viewer)
+3. Create and download a service account key as JSON
+4. Add the path to your service account JSON file in your `.env.local`:
+
+```
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/your-service-account-key.json
+```
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18.0 or later
+- Bun (latest version)
+- Google Cloud account with BigQuery access
+
+### Installation
+
+1. Clone the repository
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+git clone https://github.com/yourusername/pyusd-analytics-dashboard.git
+cd pyusd-analytics-dashboard
+```
+
+2. Install dependencies using Bun
+
+```bash
+bun install
+```
+
+3. Set up Google Cloud authentication as described above
+
+4. Start the development server
+
+```bash
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+pyusd-analytics-dashboard/
+├── src/
+│   ├── app/                   # Next.js App Router pages
+│   ├── components/            # UI components
+│   │   ├── analytics/         # Analytics visualization components
+│   │   ├── dashboard/         # Dashboard layout components
+│   │   └── ui/                # shadcn/ui components
+│   └── lib/                   # Utility functions and blockchain interactions
+├── public/                    # Static assets
+└── README.md                  # Project documentation
+```
 
-## Learn More
+## GCP Blockchain RPC & BigQuery Integration
 
-To learn more about Next.js, take a look at the following resources:
+This dashboard leverages Google Cloud Platform's services:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **BigQuery for Analytics**:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   - Top PYUSD token holders data
+   - Historical transaction analysis
+   - Network distribution metrics
+   - Token transfer patterns
 
-## Deploy on Vercel
+2. **Blockchain RPC for Real-time Data**:
+   - Current blockchain state
+   - Network status monitoring
+   - Gas price tracking
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- PayPal USD (PYUSD)
+- Google Cloud Platform
+- Stackup
+- Next.js Team
+- shadcn/ui
