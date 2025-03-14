@@ -1,31 +1,6 @@
 import { NextResponse } from "next/server";
-import { BigQuery } from "@google-cloud/bigquery";
-
-// PYUSD Contract Address
-const PYUSD_CONTRACT_ADDRESS = "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8";
-
-// Initialize BigQuery client
-const initBigQueryClient = () => {
-  try {
-    // Check for environment variables
-    const projectId = process.env.GOOGLE_CLOUD_PROJECT;
-    const keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-
-    if (!projectId) {
-      console.warn("GOOGLE_CLOUD_PROJECT environment variable not set");
-    }
-
-    // Configure BigQuery client with options
-    const options: any = {};
-    if (projectId) options.projectId = projectId;
-    if (keyFilename) options.keyFilename = keyFilename;
-
-    return new BigQuery(options);
-  } catch (error) {
-    console.error("Error initializing BigQuery client:", error);
-    throw error;
-  }
-};
+import { initBigQueryClient } from "../bigQuery";
+import { PYUSD_CONTRACT_ADDRESS } from "@/lib/blockchain";
 
 export async function GET(request: Request) {
   try {
