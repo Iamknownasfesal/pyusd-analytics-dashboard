@@ -157,7 +157,7 @@ export function TokenSupply() {
         >
           <div className="text-2xl font-bold flex items-center">
             {currentMonthAvg && currentMonthAvg.avg_daily_change >= 0 ? (
-              <>
+              <div className="flex md:flex-row flex-col">
                 +${currentMonthAvg.avg_daily_change.toLocaleString()}
                 <span className="ml-2 text-lg text-green-500">
                   (+
@@ -168,9 +168,9 @@ export function TokenSupply() {
                   ).toFixed(5)}
                   %)
                 </span>
-              </>
+              </div>
             ) : (
-              <>
+              <div className="flex md:flex-row flex-col">
                 ${currentMonthAvg?.avg_daily_change.toLocaleString()}
                 <span className="ml-2 text-lg text-red-500">
                   (
@@ -181,14 +181,14 @@ export function TokenSupply() {
                   ).toFixed(5)}
                   %)
                 </span>
-              </>
+              </div>
             )}
           </div>
           <div className="text-sm text-muted-foreground">
             Average daily supply change
           </div>
           <div className="mt-2">
-            <div className="text-lg font-semibold flex items-center">
+            <div className="text-lg font-semibold flex md:flex-row flex-col md:items-center items-start">
               {currentMonthAvg && currentMonthAvg.total_change >= 0 ? "+" : ""}$
               {currentMonthAvg?.total_change.toLocaleString()}
               <span
@@ -221,7 +221,7 @@ export function TokenSupply() {
         >
           <div className="text-2xl font-bold flex items-center">
             {currentYearAvg && currentYearAvg.avg_daily_change >= 0 ? (
-              <>
+              <div className="flex md:flex-row flex-col">
                 +${currentYearAvg.avg_daily_change.toLocaleString()}
                 <span className="ml-2 text-lg text-green-500">
                   (+
@@ -232,9 +232,9 @@ export function TokenSupply() {
                   ).toFixed(5)}
                   %)
                 </span>
-              </>
+              </div>
             ) : (
-              <>
+              <div className="flex md:flex-row flex-col">
                 ${currentYearAvg?.avg_daily_change.toLocaleString()}
                 <span className="ml-2 text-lg text-red-500">
                   (
@@ -245,14 +245,14 @@ export function TokenSupply() {
                   ).toFixed(5)}
                   %)
                 </span>
-              </>
+              </div>
             )}
           </div>
           <div className="text-sm text-muted-foreground">
             Average daily supply change
           </div>
           <div className="mt-2">
-            <div className="text-lg font-semibold flex items-center">
+            <div className="text-lg font-semibold flex md:flex-row flex-col md:items-center items-start">
               {currentYearAvg && currentYearAvg.total_change >= 0 ? "+" : ""}$
               {currentYearAvg?.total_change.toLocaleString()}
               <span

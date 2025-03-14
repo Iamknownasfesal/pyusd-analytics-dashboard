@@ -35,14 +35,28 @@ export default function DashboardPage() {
         </p>
 
         <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="live">Transactions</TabsTrigger>
-            <TabsTrigger value="supply">Supply</TabsTrigger>
-            <TabsTrigger value="holders">Holders</TabsTrigger>
-            <TabsTrigger value="volume">Transaction Volume</TabsTrigger>
-            <TabsTrigger value="network">Network</TabsTrigger>
+          <TabsList className="w-full md:flex md:bg-inherit grid grid-cols-3 gap-2 bg-transparent p-0">
+            <TabsTrigger value="overview" className="px-3 py-2 text-sm">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="live" className="px-3 py-2 text-sm">
+              Transactions
+            </TabsTrigger>
+            <TabsTrigger value="supply" className="px-3 py-2 text-sm">
+              Supply
+            </TabsTrigger>
+            <TabsTrigger value="holders" className="px-3 py-2 text-sm">
+              Holders
+            </TabsTrigger>
+            <TabsTrigger value="volume" className="px-3 py-2 text-sm">
+              Volume
+            </TabsTrigger>
+            <TabsTrigger value="network" className="px-3 py-2 text-sm">
+              Network
+            </TabsTrigger>
           </TabsList>
+
+          <div className="my-5"></div>
 
           <TabsContent value="overview" className="space-y-6">
             <Suspense fallback={<LoadingFallback />}>
