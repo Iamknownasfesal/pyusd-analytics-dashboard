@@ -10,6 +10,9 @@ A comprehensive real-time analytics dashboard for monitoring PayPal USD (PYUSD) 
 - Gas usage comparison with other stablecoins
 - Top holders analysis and distribution visualization via Google BigQuery
 - Interactive charts and graphs for data visualization
+- AI-powered wallet analysis and insights
+- Smart transaction pattern detection
+- Automated behavioral analytics
 
 ## Tech Stack
 
@@ -21,6 +24,7 @@ A comprehensive real-time analytics dashboard for monitoring PayPal USD (PYUSD) 
 - **Package Manager**: Bun
 - **Data Fetching**: Server Components with Suspense
 - **State Management**: React Context API
+- **AI Integration**: Google Gemini 2.0 Flash
 
 ## Environment Variables
 
@@ -124,6 +128,35 @@ This dashboard leverages Google Cloud Platform's services:
    - Current blockchain state
    - Network status monitoring
    - Gas price tracking
+
+## AI Features & Capabilities
+
+The dashboard incorporates advanced AI capabilities powered by Google's Gemini 2.0 Flash model:
+
+### Wallet Analysis
+
+- **Smart Pattern Detection**: Automatically identifies transaction patterns and user behaviors
+- **Historical Context**: Analyzes historical transaction data to provide meaningful insights
+
+### AI-Powered Insights
+
+- **Transaction Behavior Analysis**: Provides detailed insights about transaction patterns and user behavior
+- **Automated Reporting**: Generates natural language summaries of wallet activities
+- **Anomaly Detection**: Identifies unusual transaction patterns or behaviors
+
+### Technical Implementation
+
+- Utilizes Google's Gemini 2.0 Flash model for AI capabilities
+- Real-time analysis and natural language processing of blockchain data
+- Fallback to rule-based insights for reliability
+
+### Environment Setup
+
+To enable AI features, add your Gemini API key to your `.env.local`:
+
+```
+GEMINI_API_KEY=your_api_key_here
+```
 
 ## License
 
