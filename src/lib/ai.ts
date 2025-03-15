@@ -63,7 +63,7 @@ export async function generateWalletInsights(
 
     // Generate content with Gemini
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = result.response;
     const text = response.text();
 
     // Parse the response to extract insights
@@ -152,5 +152,164 @@ export async function generateWalletInsights(
     }
 
     return fallbackInsights;
+  }
+}
+
+export async function generateMEVInsights(data: {
+  monthlyData: any[];
+  lastWeekActivity: any[];
+  recentStats: any;
+  movingAverages: any[];
+}) {
+  // Calculate recent activity metrics
+  const recentActivity = data.lastWeekActivity;
+  const totalBlocks = recentActivity.reduce(
+    (sum: number, day: any) => sum + day.total_blocks,
+    0
+  );
+  const sandwichBlocks = recentActivity.reduce(
+    (sum: number, day: any) => sum + day.sandwich_blocks,
+    0
+  );
+  const frontrunBlocks = recentActivity.reduce(
+    (sum: number, day: any) => sum + day.frontrun_blocks,
+    0
+  );
+
+  // Calculate percentages
+  const sandwichPercentage = (sandwichBlocks / totalBlocks) * 100;
+  const frontrunPercentage = (frontrunBlocks / totalBlocks) * 100;
+
+  try {
+    const model = getGeminiModel();
+
+    // Prepare data for analysis
+    const recentTrends = data.movingAverages;
+    const sandwichTrend = calculateTrendDirection(
+      recentTrends.map((d) => d.avg_sandwich_count)
+    );
+    const frontrunTrend = calculateTrendDirection(
+      recentTrends.map((d) => d.avg_frontrun_count)
+    );
+
+    // Prepare prompt for AI analysis
+    const prompt = `Analyze this PYUSD MEV activity data and provide exactly 2 insights:
+
+Recent Activity (Last 7 Days):
+- Total Blocks with MEV: ${totalBlocks}
+- Sandwich Attack Blocks: ${sandwichBlocks} (${sandwichPercentage.toFixed(2)}%)
+- Frontrunning Blocks: ${frontrunBlocks} (${frontrunPercentage.toFixed(2)}%)
+
+Trends:
+- Sandwich Attack Trend: ${sandwichTrend}
+- Frontrunning Trend: ${frontrunTrend}
+
+Provide exactly 2 insights that are:
+1. A clear assessment of current MEV risk and its trend
+2. A specific, actionable recommendation for traders
+
+Each insight must be:
+- Under 100 characters
+- Direct and actionable
+- Free of technical jargon
+- Start with a bullet point (•)
+
+Example format:
+• First insight here
+• Second insight here`;
+
+    // Generate insights using AI
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    const insights = responseText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("•"))
+      .map((line) => line.trim())
+      .map((line) => line.substring(1).trim());
+
+    const fallbackInsights = [
+      `• MEV risk is moderate with ${sandwichPercentage.toFixed(
+        0
+      )}% of blocks affected by sandwich attacks`,
+      "• Use limit orders and avoid large trades during peak hours to minimize MEV exposure",
+    ];
+
+    return insights.length === 2 ? insights : fallbackInsights;
+  } catch (error) {
+    console.error("Error generating MEV insights:", error);
+    return [
+      `• MEV risk is moderate with ${sandwichPercentage.toFixed(
+        0
+      )}% of blocks affected by sandwich attacks`,
+      "• Use limit orders and avoid large trades during peak hours to minimize MEV exposure",
+    ];
+  }
+}
+
+// Calculate trend direction
+function calculateTrendDirection(values: number[]): string {
+  const firstHalf = values.slice(0, Math.floor(values.length / 2));
+  const secondHalf = values.slice(Math.floor(values.length / 2));
+
+  const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+  const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+
+  const percentChange = ((secondAvg - firstAvg) / firstAvg) * 100;
+
+  if (percentChange > 10) return "Increasing significantly";
+  if (percentChange > 5) return "Increasing moderately";
+  if (percentChange > 0) return "Slightly increasing";
+  if (percentChange < -10) return "Decreasing significantly";
+  if (percentChange < -5) return "Decreasing moderately";
+  if (percentChange < 0) return "Slightly decreasing";
+  return "Stable";
+}
+
+// Calculate MEV risk score based on recent activity and trends
+export function calculateMEVRiskScore(
+  recentStats: any,
+  movingAverages: any[]
+): number {
+  try {
+    let score = 50; // Base score
+
+    // Recent activity impact
+    const recentSandwichRatio =
+      recentStats.sandwich_blocks_24h / recentStats.total_blocks_24h;
+    const recentFrontrunRatio =
+      recentStats.frontrun_blocks_24h / recentStats.total_blocks_24h;
+
+    if (recentSandwichRatio > 0.1) score += 20;
+    else if (recentSandwichRatio > 0.05) score += 10;
+
+    if (recentFrontrunRatio > 0.1) score += 20;
+    else if (recentFrontrunRatio > 0.05) score += 10;
+
+    // Trend impact
+    const recentTrends = movingAverages.slice(-7);
+    const sandwichTrend = calculateTrendDirection(
+      recentTrends.map(
+        (d: { avg_sandwich_count: number }) => d.avg_sandwich_count
+      )
+    );
+    const frontrunTrend = calculateTrendDirection(
+      recentTrends.map(
+        (d: { avg_frontrun_count: number }) => d.avg_frontrun_count
+      )
+    );
+
+    if (sandwichTrend.includes("significantly")) score += 15;
+    else if (sandwichTrend.includes("moderately")) score += 10;
+    else if (sandwichTrend.includes("slightly")) score += 5;
+
+    if (frontrunTrend.includes("significantly")) score += 15;
+    else if (frontrunTrend.includes("moderately")) score += 10;
+    else if (frontrunTrend.includes("slightly")) score += 5;
+
+    return Math.min(100, Math.max(0, score));
+  } catch (error) {
+    console.error("Error calculating MEV risk score:", error);
+    return 50;
   }
 }

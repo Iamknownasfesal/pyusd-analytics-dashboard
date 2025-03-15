@@ -4,6 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TransactionVolume } from "@/components/analytics/transaction-volume";
 import { TopHolders } from "@/components/analytics/top-holders";
 import { TokenSupply } from "@/components/analytics/token-supply";
+import { MarketPredictions } from "@/components/analytics/market-predictions";
+import { MEVAnalysis } from "@/components/analytics/mev-analysis";
 import dynamic from "next/dynamic";
 import { PYUSDOverview } from "@/components/dashboard/pyusd-overview";
 import { GasStatistics } from "@/components/dashboard/gas-statistics";
@@ -51,12 +53,18 @@ export default function DashboardPage() {
             <TabsTrigger value="volume" className="px-3 py-2 text-sm">
               Volume
             </TabsTrigger>
+            <TabsTrigger value="predictions" className="px-3 py-2 text-sm">
+              Predictions
+            </TabsTrigger>
+            <TabsTrigger value="mev" className="px-3 py-2 text-sm">
+              MEV
+            </TabsTrigger>
             <TabsTrigger value="network" className="px-3 py-2 text-sm">
               Network
             </TabsTrigger>
           </TabsList>
 
-          <div className="my-5"></div>
+          <div className="my-10 md:my-3"></div>
 
           <TabsContent value="overview" className="space-y-6">
             <Suspense fallback={<LoadingFallback />}>
@@ -118,6 +126,35 @@ export default function DashboardPage() {
                 </p>
               </div>
               <TransactionVolume />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="predictions" className="space-y-6">
+            <Suspense fallback={<LoadingFallback />}>
+              <div className="flex flex-col space-y-1 mb-4">
+                <h2 className="text-2xl font-bold tracking-tight">
+                  Market Predictions
+                </h2>
+                <p className="text-muted-foreground">
+                  AI-powered analysis and predictions of PYUSD market movements.
+                </p>
+              </div>
+              <MarketPredictions />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="mev" className="space-y-6">
+            <Suspense fallback={<LoadingFallback />}>
+              <div className="flex flex-col space-y-1 mb-4">
+                <h2 className="text-2xl font-bold tracking-tight">
+                  MEV Analysis
+                </h2>
+                <p className="text-muted-foreground">
+                  Monitor MEV activities like sandwich attacks and frontrunning
+                  affecting PYUSD.
+                </p>
+              </div>
+              <MEVAnalysis />
             </Suspense>
           </TabsContent>
 
