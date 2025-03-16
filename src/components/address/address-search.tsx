@@ -17,6 +17,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 // Format number with K, M, B, T suffixes
 const formatNumberWithSuffix = (num: number): string => {
@@ -70,11 +71,19 @@ export type AddressSearchRef = {
   closeAddressModal: () => void;
 };
 
+// Function to fetch address info
+const fetchAddressInfo = async (address: string): Promise<AddressInfo> => {
+  const response = await fetch(`/api/address-info?address=${address}`);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to fetch address information");
+  }
+  return response.json();
+};
+
 export const AddressSearch = forwardRef<AddressSearchRef, {}>((props, ref) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [addressInfo, setAddressInfo] = useState<AddressInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [currentAddress, setCurrentAddress] = useState<string>("");
 
   const { register, handleSubmit, formState, reset, setValue } =
     useForm<AddressFormValues>({
@@ -84,44 +93,35 @@ export const AddressSearch = forwardRef<AddressSearchRef, {}>((props, ref) => {
       },
     });
 
+  // Use Tanstack Query for fetching and caching address data
+  const {
+    data: addressInfo,
+    error,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["addressInfo", currentAddress],
+    queryFn: () => fetchAddressInfo(currentAddress),
+    enabled: !!currentAddress && isDialogOpen,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    retry: 1,
+  });
+
   // Expose methods to parent components via ref
   useImperativeHandle(ref, () => ({
     openAddressModal: (address: string) => {
       setValue("address", address);
-      fetchAddressInfo(address);
+      setCurrentAddress(address);
+      setIsDialogOpen(true);
     },
     closeAddressModal: () => {
       setIsDialogOpen(false);
     },
   }));
 
-  const fetchAddressInfo = async (address: string) => {
-    setIsLoading(true);
-    setError(null);
-    setIsDialogOpen(true);
-
-    try {
-      const response = await fetch(`/api/address-info?address=${address}`);
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to fetch address information");
-      }
-
-      setAddressInfo(result);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "An unknown error occurred";
-      setError(errorMessage);
-      toast.error(errorMessage);
-      console.error("Error fetching address info:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const onSubmit = async (data: AddressFormValues) => {
-    fetchAddressInfo(data.address);
+    setCurrentAddress(data.address);
+    setIsDialogOpen(true);
   };
 
   // Show form validation errors as toast
@@ -207,7 +207,11 @@ export const AddressSearch = forwardRef<AddressSearchRef, {}>((props, ref) => {
               <Skeleton className="h-32 w-full" />
             </div>
           ) : error ? (
-            <div className="text-destructive p-4">{error}</div>
+            <div className="text-destructive p-4">
+              {error instanceof Error
+                ? error.message
+                : "An unknown error occurred"}
+            </div>
           ) : addressInfo ? (
             <div className="space-y-6">
               <div className="space-y-2">
