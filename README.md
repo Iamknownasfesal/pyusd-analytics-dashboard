@@ -65,6 +65,26 @@ gcloud auth application-default login
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/your-service-account-key.json
 ```
 
+#### Option 3: Environment Variables (for production)
+
+For production deployments, you can set the Google Cloud credentials directly as environment variables:
+
+```
+GOOGLE_PRIVATE_KEY_ID=your_private_key_id
+GOOGLE_PRIVATE_KEY=your_private_key
+GOOGLE_CLIENT_EMAIL=your_client_email
+GOOGLE_CLIENT_ID=your_client_id
+```
+
+1. Create a service account in GCP Console
+2. Grant the service account BigQuery permissions (at least BigQuery Data Viewer)
+3. Create and download a service account key as JSON
+4. Add the path to your service account JSON file in your `.env.local`:
+
+```
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/your-service-account-key.json
+```
+
 ## Getting Started
 
 ### Prerequisites
