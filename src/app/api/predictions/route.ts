@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { initBigQueryClient } from "../bigQuery";
 import { PYUSD_CONTRACT_ADDRESS } from "@/lib/blockchain";
-import { generateMarketPredictions } from "@/lib/market-predictions";
+import { generateMarketPredictions } from "@/lib/ai";
 
 export async function GET() {
   try {
