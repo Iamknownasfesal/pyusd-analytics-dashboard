@@ -143,11 +143,14 @@ This dashboard leverages Google Cloud Platform's services:
    - Historical transaction analysis
    - Network distribution metrics
    - Token transfer patterns
+   - Market Prediction metrics
+   - MEV Analysis
 
 2. **Blockchain RPC for Real-time Data**:
    - Current blockchain state
    - Network status monitoring
    - Gas price tracking
+   - Total PYUSD supply (total minted & burned)
 
 ## AI Features & Capabilities
 
