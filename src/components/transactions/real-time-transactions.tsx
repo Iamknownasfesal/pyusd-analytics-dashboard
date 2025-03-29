@@ -95,6 +95,44 @@ export function RealTimeTransactionsTable() {
         const provider = new ethers.JsonRpcProvider(rpcUrl);
         providerRef.current = provider;
 
+        // Helper function to fetch logs in batches respecting the 5-block limit
+        const fetchLogsInBatches = async (
+          contract: ethers.Contract,
+          filter: any,
+          fromBlock: number,
+          toBlock: number
+        ) => {
+          // Google Blockchain RPC has a limit of 5 blocks per request
+          const MAX_BLOCK_RANGE = 5;
+          let logs: any[] = [];
+
+          // Process in chunks of MAX_BLOCK_RANGE blocks
+          for (
+            let start = fromBlock;
+            start <= toBlock;
+            start += MAX_BLOCK_RANGE
+          ) {
+            const end = Math.min(start + MAX_BLOCK_RANGE - 1, toBlock);
+
+            try {
+              console.log(`Fetching logs from blocks ${start} to ${end}`);
+              const batchLogs = await contract.queryFilter(filter, start, end);
+              logs = [...logs, ...batchLogs];
+            } catch (error) {
+              console.error(
+                `Error fetching logs for blocks ${start}-${end}:`,
+                error
+              );
+              // Continue with the next batch even if this one fails
+            }
+
+            // Add a small delay to avoid rate limiting
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+
+          return logs;
+        };
+
         try {
           // Try to set up an event filter first (more efficient)
           const contract = new ethers.Contract(
@@ -113,114 +151,211 @@ export function RealTimeTransactionsTable() {
             topics: [transferTopic],
           };
 
-          const filterId = await provider.send("eth_newFilter", [filter]);
-          filterIdRef.current = filterId;
-          setConnectionType("filter");
-          setIsConnected(true);
-          console.log("Filter-based event monitoring set up successfully");
+          // Try to use filter-based approach
+          try {
+            const filterId = await provider.send("eth_newFilter", [filter]);
+            filterIdRef.current = filterId;
+            setConnectionType("filter");
+            setIsConnected(true);
+            console.log("Filter-based event monitoring set up successfully");
 
-          // Poll for new events using the filter
-          pollIntervalRef.current = setInterval(async () => {
-            try {
-              if (!filterIdRef.current) return;
+            // Poll for new events using the filter
+            pollIntervalRef.current = setInterval(async () => {
+              try {
+                if (!filterIdRef.current) return;
 
-              const newLogs = await provider.send("eth_getFilterChanges", [
-                filterIdRef.current,
-              ]);
+                const newLogs = await provider.send("eth_getFilterChanges", [
+                  filterIdRef.current,
+                ]);
 
-              if (!newLogs || !Array.isArray(newLogs) || newLogs.length === 0) {
-                return;
-              }
-
-              console.log(`Received ${newLogs.length} new transfer events`);
-
-              // Process new transfer events
-              const transferPromises = newLogs.map(async (log) => {
-                try {
-                  // Parse the log data
-                  const parsedLog = contract.interface.parseLog({
-                    topics: log.topics as string[],
-                    data: log.data,
-                  });
-
-                  if (!parsedLog) return null;
-
-                  const { from, to, value } = parsedLog.args;
-
-                  // Get the transaction details
-                  const tx = await provider.getTransaction(log.transactionHash);
-
-                  // Get the block
-                  const block = await provider.getBlock(log.blockNumber);
-
-                  if (!block) return null;
-
-                  const decimals = 6; // PYUSD has 6 decimals
-
-                  return {
-                    hash: log.transactionHash,
-                    from,
-                    to,
-                    value: ethers.formatUnits(value, decimals),
-                    timestamp: new Date(
-                      Number(block.timestamp) * 1000
-                    ).toISOString(),
-                    blockNumber: Number(log.blockNumber),
-                  };
-                } catch (error) {
-                  console.error("Error processing log:", error);
-                  return null;
+                if (
+                  !newLogs ||
+                  !Array.isArray(newLogs) ||
+                  newLogs.length === 0
+                ) {
+                  return;
                 }
-              });
 
-              const newTransfers = (await Promise.all(transferPromises)).filter(
-                (t): t is Transfer => t !== null
-              );
+                console.log(`Received ${newLogs.length} new transfer events`);
 
-              if (newTransfers.length > 0) {
-                // Update the query cache with the new transfers
-                queryClient.setQueryData<Transfer[]>(
-                  ["transfers"],
-                  (oldData = []) => {
-                    // Combine new transfers with existing ones, remove duplicates, and keep only the latest 20
-                    const combined = [...newTransfers, ...oldData];
-                    const uniqueTransfers = Array.from(
-                      new Map(combined.map((t) => [t.hash, t])).values()
-                    );
-                    return uniqueTransfers.slice(0, 20);
+                // Process new transfer events
+                const transferPromises = newLogs.map(async (log) => {
+                  try {
+                    // Parse the log data
+                    const parsedLog = contract.interface.parseLog({
+                      topics: log.topics as string[],
+                      data: log.data,
+                    });
+
+                    if (!parsedLog) return null;
+
+                    const { from, to, value } = parsedLog.args;
+
+                    // Get the block
+                    const block = await provider.getBlock(log.blockNumber);
+
+                    if (!block) return null;
+
+                    const decimals = 6; // PYUSD has 6 decimals
+
+                    return {
+                      hash: log.transactionHash,
+                      from,
+                      to,
+                      value: ethers.formatUnits(value, decimals),
+                      timestamp: new Date(
+                        Number(block.timestamp) * 1000
+                      ).toISOString(),
+                      blockNumber: Number(log.blockNumber),
+                    };
+                  } catch (error) {
+                    console.error("Error processing log:", error);
+                    return null;
                   }
+                });
+
+                const newTransfers = (
+                  await Promise.all(transferPromises)
+                ).filter((t): t is Transfer => t !== null);
+
+                if (newTransfers.length > 0) {
+                  // Update the query cache with the new transfers
+                  queryClient.setQueryData<Transfer[]>(
+                    ["transfers"],
+                    (oldData = []) => {
+                      // Combine new transfers with existing ones, remove duplicates, and keep only the latest 20
+                      const combined = [...newTransfers, ...oldData];
+                      const uniqueTransfers = Array.from(
+                        new Map(combined.map((t) => [t.hash, t])).values()
+                      );
+                      return uniqueTransfers.slice(0, 20);
+                    }
+                  );
+
+                  // Mark new transfers for animation
+                  markTransfersAsNew(newTransfers.map((t) => t.hash));
+                }
+              } catch (error) {
+                console.error("Error polling for new events:", error);
+
+                // If filter polling fails, try creating a new filter
+                try {
+                  if (filterIdRef.current) {
+                    await provider.send("eth_uninstallFilter", [
+                      filterIdRef.current,
+                    ]);
+                  }
+                  const newFilterId = await provider.send("eth_newFilter", [
+                    filter,
+                  ]);
+                  filterIdRef.current = newFilterId;
+                  console.log("Created new filter after error:", newFilterId);
+                } catch (filterError) {
+                  console.error("Failed to create new filter:", filterError);
+                  // Fall back to regular polling if filter approach fails
+                  setConnectionType("polling");
+                }
+              }
+            }, 5000); // Poll every 5 seconds
+          } catch (filterError) {
+            console.warn(
+              "Filter-based monitoring failed, falling back to polling:",
+              filterError
+            );
+            setConnectionType("polling");
+            setIsConnected(true);
+
+            // Set up polling approach
+            let lastProcessedBlock = await provider.getBlockNumber();
+
+            pollIntervalRef.current = setInterval(async () => {
+              try {
+                // Get current block
+                const currentBlock = await provider.getBlockNumber();
+
+                // Skip if no new blocks
+                if (currentBlock <= lastProcessedBlock) {
+                  return;
+                }
+
+                console.log(
+                  `Checking blocks ${lastProcessedBlock + 1} to ${currentBlock}`
                 );
 
-                // Mark new transfers for animation
-                markTransfersAsNew(newTransfers.map((t) => t.hash));
-              }
-            } catch (error) {
-              console.error("Error polling for new events:", error);
+                // Create a filter for the Transfer event
+                const transferFilter = contract.filters.Transfer();
 
-              // If filter polling fails, try creating a new filter
-              try {
-                if (filterIdRef.current) {
-                  await provider.send("eth_uninstallFilter", [
-                    filterIdRef.current,
-                  ]);
+                // Fetch logs in batches respecting the 5-block limit
+                const logs = await fetchLogsInBatches(
+                  contract,
+                  transferFilter,
+                  lastProcessedBlock + 1,
+                  currentBlock
+                );
+
+                // Update last processed block
+                lastProcessedBlock = currentBlock;
+
+                if (logs.length === 0) {
+                  return;
                 }
-                const newFilterId = await provider.send("eth_newFilter", [
-                  filter,
-                ]);
-                filterIdRef.current = newFilterId;
-                console.log("Created new filter after error:", newFilterId);
-              } catch (filterError) {
-                console.error("Failed to create new filter:", filterError);
-                // Fall back to regular polling if filter approach fails
-                setConnectionType("polling");
+
+                console.log(`Found ${logs.length} transfer events`);
+
+                // Process the logs to create transfer objects
+                const processedTransfers = await Promise.all(
+                  logs.map(async (log) => {
+                    try {
+                      const decimals = 6; // PYUSD has 6 decimals
+                      const block = await provider.getBlock(log.blockNumber);
+
+                      if (!block) return null;
+
+                      return {
+                        hash: log.transactionHash,
+                        from: log.args[0],
+                        to: log.args[1],
+                        value: ethers.formatUnits(log.args[2], decimals),
+                        timestamp: new Date(
+                          Number(block.timestamp) * 1000
+                        ).toISOString(),
+                        blockNumber: Number(log.blockNumber),
+                      };
+                    } catch (error) {
+                      console.error("Error processing log:", error);
+                      return null;
+                    }
+                  })
+                );
+
+                const newTransfers = processedTransfers.filter(
+                  (t): t is Transfer => t !== null
+                );
+
+                if (newTransfers.length > 0) {
+                  // Update the query cache with the new transfers
+                  queryClient.setQueryData<Transfer[]>(
+                    ["transfers"],
+                    (oldData = []) => {
+                      // Combine new transfers with existing ones, remove duplicates, and keep only the latest 20
+                      const combined = [...newTransfers, ...oldData];
+                      const uniqueTransfers = Array.from(
+                        new Map(combined.map((t) => [t.hash, t])).values()
+                      );
+                      return uniqueTransfers.slice(0, 20);
+                    }
+                  );
+
+                  // Mark new transfers for animation
+                  markTransfersAsNew(newTransfers.map((t) => t.hash));
+                }
+              } catch (error) {
+                console.error("Error in polling approach:", error);
               }
-            }
-          }, 5000); // Poll every 5 seconds
-        } catch (filterError) {
-          console.warn(
-            "Filter-based monitoring failed, falling back to polling:",
-            filterError
-          );
+            }, 15000); // Poll less frequently (15 seconds) to avoid rate limits
+          }
+        } catch (error) {
+          console.error("Error setting up event monitoring:", error);
           setConnectionType("polling");
           setIsConnected(true);
         }

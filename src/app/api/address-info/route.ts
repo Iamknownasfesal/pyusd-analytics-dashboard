@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { initBigQueryClient } from "../bigQuery";
+import { initBigQueryClient, queries } from "../bigQuery";
 import { PYUSD_CONTRACT_ADDRESS, getPYUSDBalance } from "@/lib/blockchain";
 import { ethers } from "ethers";
 import { generateWalletInsights } from "@/lib/ai";
@@ -19,29 +19,18 @@ export async function GET(request: Request) {
     // Get PYUSD balance
     const balance = await getPYUSDBalance(address);
     const balanceNumeric = parseFloat(balance);
+    const lowercaseAddress = address.toLowerCase();
+    const pyusdAddress = PYUSD_CONTRACT_ADDRESS.toLowerCase();
 
-    // Query BigQuery for transaction history
-    const bigquery = initBigQueryClient();
-
-    // Get the total number of transactions
+    // Run all queries in parallel
     const transactionCountQuery = `
       SELECT COUNT(*) as tx_count
       FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
       WHERE 
-        address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
-        AND (from_address = '${address.toLowerCase()}' OR to_address = '${address.toLowerCase()}')
+        address = '${pyusdAddress}'
+        AND (from_address = '${lowercaseAddress}' OR to_address = '${lowercaseAddress}')
     `;
 
-    // Get first transaction date
-    const firstTxQuery = `
-      SELECT MIN(block_timestamp) as first_tx_date
-      FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
-      WHERE 
-        address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
-        AND (from_address = '${address.toLowerCase()}' OR to_address = '${address.toLowerCase()}')
-    `;
-
-    // Get transaction stats
     const txStatsQuery = `
       WITH send_transactions AS (
         SELECT 
@@ -49,8 +38,8 @@ export async function GET(request: Request) {
           CAST(quantity AS NUMERIC) as amount
         FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
         WHERE 
-          address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
-          AND from_address = '${address.toLowerCase()}'
+          address = '${pyusdAddress}'
+          AND from_address = '${lowercaseAddress}'
       ),
       receive_transactions AS (
         SELECT 
@@ -58,13 +47,14 @@ export async function GET(request: Request) {
           CAST(quantity AS NUMERIC) as amount
         FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
         WHERE 
-          address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
-          AND to_address = '${address.toLowerCase()}'
+          address = '${pyusdAddress}'
+          AND to_address = '${lowercaseAddress}'
       )
       SELECT
         COUNT(*) as total_txs,
         (SELECT COUNT(*) FROM send_transactions) as send_txs,
         (SELECT COUNT(*) FROM receive_transactions) as receive_txs,
+        (SELECT MIN(block_timestamp) FROM (SELECT block_timestamp FROM send_transactions UNION ALL SELECT block_timestamp FROM receive_transactions)) as first_tx_date,
         (SELECT SUM(amount) FROM send_transactions) as total_sent,
         (SELECT SUM(amount) FROM receive_transactions) as total_received,
         (SELECT MAX(amount) FROM send_transactions) as max_sent,
@@ -78,32 +68,24 @@ export async function GET(request: Request) {
       )
     `;
 
-    // Run queries in parallel
-    const [txCountResult, firstTxResult, txStatsResult] = await Promise.all([
+    const bigquery = initBigQueryClient();
+    const [txCountResult, txStatsResult] = await Promise.all([
       bigquery.query({ query: transactionCountQuery }),
-      bigquery.query({ query: firstTxQuery }),
       bigquery.query({ query: txStatsQuery }),
     ]);
 
     const txCount = txCountResult[0][0].tx_count;
-    const firstTxDate = firstTxResult[0][0].first_tx_date;
     const txStats = txStatsResult[0][0];
 
-    // Format data - with proper date validation
+    // Format date if it exists
     let formattedFirstTxDate = null;
-    if (firstTxDate && firstTxDate instanceof Date) {
+    if (txStats.first_tx_date) {
       try {
-        formattedFirstTxDate = firstTxDate.toISOString();
+        formattedFirstTxDate = new Date(
+          txStats.first_tx_date.value
+        ).toISOString();
       } catch (error) {
         console.error("Error formatting date:", error);
-        formattedFirstTxDate = null;
-      }
-    } else if (firstTxDate && typeof firstTxDate === "string") {
-      try {
-        formattedFirstTxDate = new Date(firstTxDate).toISOString();
-      } catch (error) {
-        console.error("Error parsing date string:", error);
-        formattedFirstTxDate = null;
       }
     }
 
@@ -132,7 +114,7 @@ export async function GET(request: Request) {
         : 0,
     };
 
-    // Generate AI insights based on transaction data using the AI model
+    // Generate insights
     const insights = await generateWalletInsights(
       address,
       balanceNumeric,
@@ -147,8 +129,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error fetching address info:", error);
-
-    // Return a generic error with mock data for demo purposes
     return NextResponse.json(
       {
         address: "0x0000000000000000000000000000000000000000",

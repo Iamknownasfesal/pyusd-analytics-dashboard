@@ -1,4 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { getGasStats, getRecentTransfers } from "@/lib/blockchain";
 
 // Transaction Volume types
 export interface VolumeData {
@@ -57,57 +59,109 @@ export interface Transfer {
   isNew?: boolean;
 }
 
+// Generic data fetcher with error handling
+async function fetchData<T>(url: string, errorMessage: string): Promise<T> {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const errorData = await response
+      .json()
+      .catch(() => ({ message: errorMessage }));
+    const error = new Error(errorData?.message || errorMessage);
+    toast.error(errorMessage);
+    return null as unknown as T;
+  }
+
+  return response.json();
+}
+
 // Transaction Volume API hook
-export function useTransactionVolume() {
+export function useTransactionVolume(enabled: boolean = true) {
   return useQuery({
     queryKey: ["transaction-volume"],
     queryFn: async () => {
-      const response = await fetch("/api/transaction-volume");
-      if (!response.ok) {
-        throw new Error("Failed to fetch transaction volume data");
+      try {
+        return await fetchData<{
+          data: VolumeData[];
+          summary: VolumeSummary;
+        }>(
+          "/api/transaction-volume",
+          "Failed to fetch transaction volume data"
+        );
+      } catch (error) {
+        // Fallback data if needed
+        return {
+          data: [],
+          summary: {
+            volume_24h: 0,
+            percent_change_24h: 0,
+            volume_7d: 0,
+            percent_change_7d: 0,
+            volume_30d: 0,
+            percent_change_30d: 0,
+          },
+        };
       }
-      const data = await response.json();
-      return {
-        data: data.data as VolumeData[],
-        summary: data.summary as VolumeSummary,
-      };
     },
+    enabled,
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 }
 
-// Token Supply API hook
-export function useTokenSupply() {
+// Token Supply API hook with dedicated caching key
+export function useTokenSupply(enabled: boolean = true) {
   return useQuery({
     queryKey: ["token-supply"],
     queryFn: async () => {
-      const response = await fetch("/api/token-supply");
-      if (!response.ok) {
-        throw new Error("Failed to fetch token supply data");
+      try {
+        return await fetchData<{
+          supply_history: SupplyHistoryData[];
+          current_supply: number;
+          total_minted: number;
+          total_burned: number;
+          monthly_avg: AvgChangeData[];
+          yearly_avg: AvgChangeData[];
+          current_month_avg: AvgChangeData;
+          current_year_avg: AvgChangeData;
+        }>("/api/token-supply", "Failed to fetch token supply data");
+      } catch (error) {
+        console.error("Supply data fetch error:", error);
+        // Return minimal fallback data
+        return {
+          supply_history: [],
+          current_supply: 0,
+          total_minted: 0,
+          total_burned: 0,
+          monthly_avg: [],
+          yearly_avg: [],
+          current_month_avg: {
+            period: "",
+            avg_daily_change: 0,
+            total_change: 0,
+          },
+          current_year_avg: {
+            period: "",
+            avg_daily_change: 0,
+            total_change: 0,
+          },
+        };
       }
-      const data = await response.json();
-      return {
-        supply_history: data.supply_history as SupplyHistoryData[],
-        current_supply: data.current_supply as number,
-        total_minted: data.total_minted as number,
-        total_burned: data.total_burned as number,
-        monthly_avg: data.monthly_avg as AvgChangeData[],
-        yearly_avg: data.yearly_avg as AvgChangeData[],
-        current_month_avg: data.current_month_avg as AvgChangeData,
-        current_year_avg: data.current_year_avg as AvgChangeData,
-      };
     },
+    enabled,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
-// Top Holders API hook
-export function useTopHolders(limit: number = 5) {
+// Top Holders API hook with parametrized query key
+export function useTopHolders(limit: number = 5, enabled: boolean = true) {
   return useQuery({
     queryKey: ["holders", limit],
     queryFn: async () => {
       try {
-        const response = await fetch(`/api/holders?limit=${limit}`);
-        const data = await response.json();
-        return data as HolderData;
+        return await fetchData<HolderData>(
+          `/api/holders?limit=${limit}`,
+          "Failed to fetch holder data"
+        );
       } catch (err) {
         console.error("Failed to fetch holder data:", err);
 
@@ -125,21 +179,143 @@ export function useTopHolders(limit: number = 5) {
         } as HolderData;
       }
     },
+    enabled,
+    staleTime: 1000 * 60 * 10, // 10 minutes for holder data
   });
 }
 
-// Transfers API hook
-export function useTransfers(pollingEnabled: boolean = false) {
-  return useQuery({
+// Transfers API hook with configurable polling
+export function useTransfers(enablePolling = false) {
+  return useQuery<Transfer[]>({
     queryKey: ["transfers"],
     queryFn: async () => {
-      const response = await fetch("/api/transfers");
-      if (!response.ok) {
-        throw new Error("Failed to fetch transfers data");
+      try {
+        const transfers = await getRecentTransfers(20);
+        return transfers;
+      } catch (error) {
+        console.error("Error fetching transfers:", error);
+        // Return an empty array on error to prevent UI from breaking
+        return [];
       }
-      const data = await response.json();
-      return data as Transfer[];
     },
-    refetchInterval: pollingEnabled ? 10000 : false, // If polling is enabled, refetch every 10 seconds
+    staleTime: 10000, // 10 seconds
+    refetchInterval: enablePolling ? 15000 : false, // Poll every 15 seconds if enabled
+    retry: 2,
+    retryDelay: 1000,
+  });
+}
+
+// Market predictions API hook
+export function useMarketPredictions(enabled: boolean = true) {
+  return useQuery({
+    queryKey: ["market-predictions"],
+    queryFn: async () => {
+      try {
+        return await fetchData<any>(
+          "/api/predictions",
+          "Failed to fetch market predictions"
+        );
+      } catch (error) {
+        console.error("Predictions fetch error:", error);
+        return {
+          predictions: [],
+          timestamp: new Date().toISOString(),
+          marketData: {},
+        };
+      }
+    },
+    enabled,
+    staleTime: 1000 * 60 * 30, // 30 minutes for AI predictions
+  });
+}
+
+// MEV analysis API hook
+export function useMEVAnalysis(enabled: boolean = true) {
+  return useQuery({
+    queryKey: ["mev-analysis"],
+    queryFn: async () => {
+      try {
+        return await fetchData<any>("/api/mev", "Failed to fetch MEV analysis");
+      } catch (error) {
+        console.error("MEV analysis fetch error:", error);
+        return {
+          risk_score: 0,
+          insights: [],
+          last_week_activity: [],
+          monthly_trends: [],
+          recent_activities: [],
+        };
+      }
+    },
+    enabled,
+    staleTime: 1000 * 60 * 15, // 15 minutes
+  });
+}
+
+// Address info API hook
+export function useAddressInfo(address: string | null) {
+  return useQuery({
+    queryKey: ["address", address],
+    queryFn: async () => {
+      if (!address) throw new Error("No address provided");
+      try {
+        return await fetchData<any>(
+          `/api/address-info?address=${address}`,
+          "Failed to fetch address information"
+        );
+      } catch (error) {
+        console.error("Address info fetch error:", error);
+        return null;
+      }
+    },
+    enabled: !!address,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+  });
+}
+
+// Gas statistics API hook
+export function useGasStats(enabled: boolean = true) {
+  return useQuery({
+    queryKey: ["gas-stats"],
+    queryFn: async () => {
+      try {
+        // We'll call the blockchain utilities directly to get gas stats
+        const { getGasStats } = await import("@/lib/blockchain");
+        return await getGasStats();
+      } catch (error) {
+        console.error("Gas stats fetch error:", error);
+        return {
+          gasPrice: "0",
+          maxFeePerGas: null,
+          maxPriorityFeePerGas: null,
+        };
+      }
+    },
+    enabled,
+    staleTime: 1000 * 30, // 30 seconds - gas prices change frequently
+    refetchInterval: 1000 * 60, // Refresh every minute
+  });
+}
+
+// PYUSD token info hook
+export function usePYUSDInfo(enabled: boolean = true) {
+  return useQuery({
+    queryKey: ["pyusd-info"],
+    queryFn: async () => {
+      try {
+        const { getPYUSDInfo } = await import("@/lib/blockchain");
+        return await getPYUSDInfo();
+      } catch (error) {
+        console.error("PYUSD info fetch error:", error);
+        return {
+          name: "PayPal USD",
+          symbol: "PYUSD",
+          totalSupply: "0",
+          decimals: 6,
+        };
+      }
+    },
+    enabled,
+    staleTime: 1000 * 60 * 15, // 15 minutes - this rarely changes
   });
 }

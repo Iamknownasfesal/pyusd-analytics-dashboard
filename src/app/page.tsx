@@ -1,30 +1,48 @@
-import { Suspense } from "react";
+"use client";
+
+import { Suspense, lazy } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TransactionVolume } from "@/components/analytics/transaction-volume";
-import { TopHolders } from "@/components/analytics/top-holders";
-import { TokenSupply } from "@/components/analytics/token-supply";
-import { MarketPredictions } from "@/components/analytics/market-predictions";
-import { MEVAnalysis } from "@/components/analytics/mev-analysis";
-import dynamic from "next/dynamic";
 import { PYUSDOverview } from "@/components/dashboard/pyusd-overview";
 import { GasStatistics } from "@/components/dashboard/gas-statistics";
 import { LoadingFallback } from "@/components/ui/loading-fallback";
-import { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "PYUSD Analytics Dashboard",
-  description:
-    "Real-time monitoring and analytics for PayPal USD (PYUSD) transactions",
-};
+// Lazy-loaded components for better initial load performance
+const TransactionVolume = lazy(() =>
+  import("@/components/analytics/transaction-volume").then((mod) => ({
+    default: mod.TransactionVolume,
+  }))
+);
 
-// Dynamically import the client component with no SSR
-const RealTimeTransactionsTable = dynamic(
-  () =>
-    import("@/components/transactions/real-time-transactions").then(
-      (mod) => mod.RealTimeTransactionsTable
-    ),
-  { ssr: true }
+const TopHolders = lazy(() =>
+  import("@/components/analytics/top-holders").then((mod) => ({
+    default: mod.TopHolders,
+  }))
+);
+
+const TokenSupply = lazy(() =>
+  import("@/components/analytics/token-supply").then((mod) => ({
+    default: mod.TokenSupply,
+  }))
+);
+
+const MarketPredictions = lazy(() =>
+  import("@/components/analytics/market-predictions").then((mod) => ({
+    default: mod.MarketPredictions,
+  }))
+);
+
+const MEVAnalysis = lazy(() =>
+  import("@/components/analytics/mev-analysis").then((mod) => ({
+    default: mod.MEVAnalysis,
+  }))
+);
+
+// Dynamic import for RealTimeTransactionsTable
+const RealTimeTransactionsTable = lazy(() =>
+  import("@/components/transactions/real-time-transactions").then((mod) => ({
+    default: mod.RealTimeTransactionsTable,
+  }))
 );
 
 export default function DashboardPage() {
@@ -82,7 +100,9 @@ export default function DashboardPage() {
                 Ethereum blockchain.
               </p>
             </div>
-            <RealTimeTransactionsTable />
+            <Suspense fallback={<LoadingFallback />}>
+              <RealTimeTransactionsTable />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="supply" className="space-y-6">

@@ -1,44 +1,54 @@
+"use client";
+
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
-import { getPYUSDInfo } from "@/lib/blockchain";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { usePYUSDInfo } from "@/hooks/use-api-queries";
+import { LoadingFallback } from "@/components/ui/loading-fallback";
 
-// Server component to fetch and display PYUSD overview
-export async function PYUSDOverview() {
-  try {
-    const pyusdInfo = await getPYUSDInfo();
+// Simple utility function to format numbers
+function formatNumber(value: string | number): string {
+  return Number(value).toLocaleString();
+}
 
+export function PYUSDOverview() {
+  const { data: info, isLoading, error } = usePYUSDInfo();
+
+  if (isLoading) {
+    return <LoadingFallback message="Loading PYUSD information..." />;
+  }
+
+  if (error || !info) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <DashboardCard title="Token Name">
-          <div className="text-2xl font-bold">{pyusdInfo.name}</div>
-          <p className="text-xs text-muted-foreground">
-            Official PayPal USD Token
-          </p>
-        </DashboardCard>
-
-        <DashboardCard title="Symbol">
-          <div className="text-2xl font-bold">{pyusdInfo.symbol}</div>
-          <p className="text-xs text-muted-foreground">Token Ticker</p>
-        </DashboardCard>
-
-        <DashboardCard title="Total Supply">
-          <div className="text-2xl font-bold">
-            {Number(pyusdInfo.totalSupply).toLocaleString()}
+      <Card className="col-span-full">
+        <CardContent className="pt-6">
+          <div className="text-center text-destructive">
+            Failed to load PYUSD information. Please try again later.
           </div>
-          <p className="text-xs text-muted-foreground">PYUSD in Circulation</p>
-        </DashboardCard>
-
-        <DashboardCard title="Decimals">
-          <div className="text-2xl font-bold">{pyusdInfo.decimals}</div>
-          <p className="text-xs text-muted-foreground">Token Precision</p>
-        </DashboardCard>
-      </div>
-    );
-  } catch (error) {
-    console.error("Error loading PYUSD overview:", error);
-    return (
-      <div className="text-red-500">
-        Error loading PYUSD data. Please try again later.
-      </div>
+        </CardContent>
+      </Card>
     );
   }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <DashboardCard title="Token Name">
+        <span className="text-2xl font-bold">{info.name}</span>
+      </DashboardCard>
+
+      <DashboardCard title="Symbol">
+        <Badge className="text-lg">{info.symbol}</Badge>
+      </DashboardCard>
+
+      <DashboardCard title="Total Supply">
+        <span className="text-2xl font-bold">
+          {formatNumber(info.totalSupply)}
+        </span>
+      </DashboardCard>
+
+      <DashboardCard title="Decimals">
+        <span className="text-2xl font-bold">{info.decimals}</span>
+      </DashboardCard>
+    </div>
+  );
 }

@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
-import { initBigQueryClient } from "../bigQuery";
+import { initBigQueryClient, queries } from "../bigQuery";
 import { PYUSD_CONTRACT_ADDRESS } from "@/lib/blockchain";
 import { generateMarketPredictions } from "@/lib/ai";
 
 export async function GET() {
   try {
+    const pyusdAddress = PYUSD_CONTRACT_ADDRESS.toLowerCase();
     const bigquery = initBigQueryClient();
 
-    // Query to get recent transaction patterns
+    // Simplified query to get recent market patterns
     const recentPatternsQuery = `
       WITH hourly_stats AS (
         SELECT 
@@ -19,46 +20,53 @@ export async function GET() {
           MAX(CAST(quantity AS NUMERIC)) as max_transfer
         FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
         WHERE 
-          address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
+          address = '${pyusdAddress}'
           AND block_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
         GROUP BY hour
         ORDER BY hour DESC
       ),
-      whale_movements AS (
+      whale_txs AS (
         SELECT 
           TIMESTAMP_TRUNC(block_timestamp, HOUR) as hour,
           COUNT(*) as whale_txs,
           SUM(CAST(quantity AS NUMERIC)) as whale_volume
         FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
         WHERE 
-          address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
+          address = '${pyusdAddress}'
           AND block_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
           AND CAST(quantity AS NUMERIC) >= 100000 * 1e6  -- Transactions >= 100k PYUSD
         GROUP BY hour
       ),
-      accumulation_patterns AS (
-        SELECT 
-          to_address as address,
-          COUNT(*) as receive_count,
-          SUM(CAST(quantity AS NUMERIC)) as total_received
-        FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
-        WHERE 
-          address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
-          AND block_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
-        GROUP BY to_address
-        HAVING COUNT(*) >= 3  -- At least 3 receives in 24h
-      ),
-      distribution_patterns AS (
-        SELECT 
-          from_address as address,
-          COUNT(*) as send_count,
-          SUM(CAST(quantity AS NUMERIC)) as total_sent
-        FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
-        WHERE 
-          address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
-          AND block_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
-        GROUP BY from_address
-        HAVING COUNT(*) >= 3  -- At least 3 sends in 24h
+      wallet_patterns AS (
+        SELECT
+          COUNTIF(receive_count >= 3) as accumulation_wallets,
+          COUNTIF(send_count >= 3) as distribution_wallets
+        FROM (
+          SELECT 
+            address,
+            COUNTIF(is_receive) as receive_count,
+            COUNTIF(NOT is_receive) as send_count
+          FROM (
+            SELECT 
+              to_address as address,
+              TRUE as is_receive
+            FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
+            WHERE 
+              address = '${pyusdAddress}'
+              AND block_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
+            
+            UNION ALL
+            
+            SELECT 
+              from_address as address,
+              FALSE as is_receive
+            FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
+            WHERE 
+              address = '${pyusdAddress}'
+              AND block_timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
+          )
+          GROUP BY address
+        )
       )
       SELECT
         h.hour,
@@ -69,22 +77,17 @@ export async function GET() {
         h.max_transfer / 1e6 as max_transfer,
         COALESCE(w.whale_txs, 0) as whale_txs,
         COALESCE(w.whale_volume / 1e6, 0) as whale_volume,
-        (
-          SELECT COUNT(*)
-          FROM accumulation_patterns
-        ) as accumulation_wallets,
-        (
-          SELECT COUNT(*)
-          FROM distribution_patterns
-        ) as distribution_wallets
+        wp.accumulation_wallets,
+        wp.distribution_wallets
       FROM hourly_stats h
-      LEFT JOIN whale_movements w ON h.hour = w.hour
+      LEFT JOIN whale_txs w ON h.hour = w.hour
+      CROSS JOIN wallet_patterns wp
+      LIMIT 168 -- One week of hourly data
     `;
 
-    // Execute query
     const [results] = await bigquery.query({ query: recentPatternsQuery });
 
-    // Process the data for AI analysis
+    // Process data for AI analysis
     const marketData = results.map((row: any) => ({
       timestamp: row.hour.value,
       transactionCount: row.tx_count,
@@ -98,7 +101,7 @@ export async function GET() {
       distributionWallets: row.distribution_wallets,
     }));
 
-    // Generate predictions using AI
+    // Generate AI predictions
     const predictions = await generateMarketPredictions(marketData);
 
     return NextResponse.json({

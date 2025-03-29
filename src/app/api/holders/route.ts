@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { BigQuery } from "@google-cloud/bigquery";
-import { initBigQueryClient } from "../bigQuery";
+import { initBigQueryClient, queries } from "../bigQuery";
 import { PYUSD_CONTRACT_ADDRESS } from "@/lib/blockchain";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "5", 10);
+    const pyusdAddress = PYUSD_CONTRACT_ADDRESS.toLowerCase();
 
     const bigquery = initBigQueryClient();
 
-    // Query to get top PYUSD holders
-    const topHoldersQuery = `
+    // Combined query to get top holders, total supply and holder count
+    const combinedQuery = `
       WITH token_balances AS (
         SELECT 
           address,
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
             to_address as address,
             CAST(quantity AS NUMERIC) as balance_change
           FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
-          WHERE address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
+          WHERE address = '${pyusdAddress}'
           
           UNION ALL
           
@@ -29,97 +29,44 @@ export async function GET(request: Request) {
             from_address as address,
             -CAST(quantity AS NUMERIC) as balance_change
           FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
-          WHERE address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
+          WHERE address = '${pyusdAddress}'
         )
         GROUP BY address
-      )
-      SELECT address, balance
-      FROM token_balances
-      WHERE balance > 0
-      ORDER BY balance DESC
-      LIMIT ${limit}
-    `;
-
-    // Get total supply query
-    const totalSupplyQuery = `
-      WITH transfers AS (
-        SELECT 
-          to_address,
-          from_address,
-          CAST(quantity AS NUMERIC) as amount
-        FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
-        WHERE address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
       ),
-      mints AS (
-        -- Sum amounts where from_address is 0x0 (mints)
-        SELECT SUM(amount) as total_minted
-        FROM transfers
-        WHERE from_address = '0x0000000000000000000000000000000000000000'
+      top_holders AS (
+        SELECT address, balance
+        FROM token_balances
+        WHERE balance > 0
+        ORDER BY balance DESC
+        LIMIT ${limit}
       ),
-      burns AS (
-        -- Sum amounts where to_address is 0x0 (burns)
-        SELECT SUM(amount) as total_burned
-        FROM transfers
-        WHERE to_address = '0x0000000000000000000000000000000000000000'
-      )
-      SELECT
-        (COALESCE((SELECT total_minted FROM mints), 0) - 
-         COALESCE((SELECT total_burned FROM burns), 0)) as total_supply
-    `;
-
-    // Get total holders count query
-    const totalHoldersQuery = `
-      WITH token_balances AS (
+      supply_stats AS (
         SELECT 
-          address,
-          SUM(balance_change) as final_balance
-        FROM (
-          SELECT 
-            to_address as address,
-            CAST(quantity AS NUMERIC) as balance_change
-          FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
-          WHERE address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
-          
-          UNION ALL
-          
-          SELECT 
-            from_address as address,
-            -CAST(quantity AS NUMERIC) as balance_change
-          FROM \`bigquery-public-data.goog_blockchain_ethereum_mainnet_us.token_transfers\`
-          WHERE address = '${PYUSD_CONTRACT_ADDRESS.toLowerCase()}'
-        )
-        GROUP BY address
+          SUM(balance) as total_supply,
+          COUNT(*) as holder_count
+        FROM token_balances
+        WHERE balance > 0
       )
-      SELECT COUNT(*) as holder_count
-      FROM token_balances
-      WHERE final_balance > 0
+      SELECT 
+        h.address,
+        h.balance,
+        s.total_supply,
+        s.holder_count
+      FROM top_holders h, supply_stats s
     `;
 
-    // Run queries in parallel
-    const [topHoldersResults, totalSupplyResults, totalHoldersResults] =
-      await Promise.all([
-        bigquery.query({ query: topHoldersQuery }),
-        bigquery.query({ query: totalSupplyQuery }),
-        bigquery.query({ query: totalHoldersQuery }),
-      ]);
+    const [results] = await bigquery.query({ query: combinedQuery });
 
-    const topHolders = topHoldersResults[0];
+    if (!results || results.length === 0) {
+      throw new Error("No holder data returned");
+    }
 
-    // Use a fixed total supply value if BigQuery result appears incorrect
-    // PYUSD has 6 decimals, so the raw value needs to be divided by 1e6 for display
-    const reportedSupply = 630656345.11; // User reported circulation value
-    const queryTotalSupply = totalSupplyResults[0][0].total_supply;
+    // Extract supply and holder count from the first row
+    const totalSupply = results[0].total_supply;
+    const totalHolders = results[0].holder_count;
 
-    // Use the reported supply if the query result is significantly off
-    const totalSupply =
-      Math.abs(queryTotalSupply / 1e6 - reportedSupply) > reportedSupply * 0.1
-        ? reportedSupply * 1e6
-        : queryTotalSupply;
-
-    const totalHolders = totalHoldersResults[0][0].holder_count;
-
-    // Calculate percentages and format response
-    const holders = topHolders.map((holder: any) => {
+    // Format holders with percentages
+    const holders = results.map((holder: any) => {
       const percentage = (holder.balance / totalSupply) * 100;
       return {
         address: holder.address,
@@ -133,6 +80,7 @@ export async function GET(request: Request) {
       (sum: number, holder: any) => sum + holder.percentage,
       0
     );
+
     const othersPercentage = parseFloat(
       (100 - topHoldersPercentage).toFixed(2)
     );
@@ -150,14 +98,14 @@ export async function GET(request: Request) {
           percentage: othersPercentage,
         },
       ],
-      totalHolders: totalHolders,
+      totalHolders,
     };
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("Error fetching top holders from BigQuery:", error);
+    console.error("Error fetching top holders:", error);
 
-    // Return mock data if the BigQuery query fails
+    // Return mock data if query fails
     return NextResponse.json(
       {
         holders: [

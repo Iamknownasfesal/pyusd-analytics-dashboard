@@ -28,7 +28,14 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 // Get the Gemini model
 const getGeminiModel = () => {
-  return genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  return genAI.getGenerativeModel({
+    model: "gemini-1.5-pro",
+    generationConfig: {
+      temperature: 0.2, // Lower temperature for more structured outputs
+      topP: 0.8,
+      topK: 40,
+    },
+  });
 };
 
 /**
@@ -396,10 +403,30 @@ export async function generateMarketPredictions(
     const response = await result.response;
     const text = response.text();
 
-    // Parse the JSON response
+    // Extract and parse JSON from response
+    // The AI might include additional text before or after the JSON
     try {
-      const predictions = JSON.parse(text);
-      return validateAndCleanPredictions(predictions);
+      let jsonText = text;
+
+      // Try to extract JSON array from response if it's not pure JSON
+      const jsonStartIndex = text.indexOf("[");
+      const jsonEndIndex = text.lastIndexOf("]");
+
+      if (jsonStartIndex >= 0 && jsonEndIndex > jsonStartIndex) {
+        jsonText = text.substring(jsonStartIndex, jsonEndIndex + 1);
+      }
+
+      const predictions = JSON.parse(jsonText);
+
+      if (Array.isArray(predictions) && predictions.length > 0) {
+        return validateAndCleanPredictions(predictions);
+      } else {
+        console.error(
+          "Invalid predictions format (not an array or empty):",
+          predictions
+        );
+        return generateFallbackPredictions(currentData, trends);
+      }
     } catch (error) {
       console.error("Error parsing AI response:", error);
       return generateFallbackPredictions(currentData, trends);
