@@ -85,7 +85,7 @@ export const AddressSearch = forwardRef<AddressSearchRef, {}>((props, ref) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentAddress, setCurrentAddress] = useState<string>("");
 
-  const { register, handleSubmit, formState, reset, setValue } =
+  const { register, handleSubmit, formState, setValue } =
     useForm<AddressFormValues>({
       resolver: zodResolver(addressFormSchema),
       defaultValues: {
@@ -98,7 +98,6 @@ export const AddressSearch = forwardRef<AddressSearchRef, {}>((props, ref) => {
     data: addressInfo,
     error,
     isLoading,
-    refetch,
   } = useQuery({
     queryKey: ["addressInfo", currentAddress],
     queryFn: () => fetchAddressInfo(currentAddress),
@@ -150,7 +149,7 @@ export const AddressSearch = forwardRef<AddressSearchRef, {}>((props, ref) => {
     try {
       const date = new Date(dateString);
       return !isNaN(date.getTime());
-    } catch (error) {
+    } catch {
       return false;
     }
   };

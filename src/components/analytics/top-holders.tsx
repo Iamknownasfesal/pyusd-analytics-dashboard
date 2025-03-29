@@ -1,14 +1,7 @@
 "use client";
 
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTopHolders } from "@/hooks/use-api-queries";
 import { useAddress } from "@/components/address/address-context";
@@ -134,14 +127,14 @@ export function TopHolders() {
                   paddingAngle={2}
                   dataKey="value"
                   nameKey="name"
-                  label={({ name, percent }) => {
+                  label={({ percent }) => {
                     // Shortened label to prevent overflow
                     const value = parseFloat((percent * 100).toFixed(0));
                     return value > 5 ? `${value}%` : "";
                   }}
                   labelLine={false}
                 >
-                  {pieData.map((entry, index) => (
+                  {pieData.map((_, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}

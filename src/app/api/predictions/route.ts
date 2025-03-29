@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { initBigQueryClient, queries } from "../bigQuery";
+import { initBigQueryClient } from "../bigQuery";
 import { PYUSD_CONTRACT_ADDRESS } from "@/lib/blockchain";
 import { generateMarketPredictions } from "@/lib/ai";
 

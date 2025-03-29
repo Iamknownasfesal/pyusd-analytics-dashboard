@@ -425,18 +425,15 @@ export async function generateMarketPredictions(
           "Invalid predictions format (not an array or empty):",
           predictions
         );
-        return generateFallbackPredictions(currentData, trends);
+        return generateFallbackPredictions(currentData);
       }
     } catch (error) {
       console.error("Error parsing AI response:", error);
-      return generateFallbackPredictions(currentData, trends);
+      return generateFallbackPredictions(currentData);
     }
   } catch (error) {
     console.error("Error generating market predictions:", error);
-    return generateFallbackPredictions(
-      marketData[0],
-      analyzeTrends(marketData)
-    );
+    return generateFallbackPredictions(marketData[0]);
   }
 }
 
@@ -522,12 +519,7 @@ function validateAndCleanPredictions(predictions: any[]): MarketPrediction[] {
 }
 
 function generateFallbackPredictions(
-  currentData: MarketData,
-  trends: {
-    volumeTrend: string;
-    whaleActivityTrend: string;
-    networkActivityTrend: string;
-  }
+  currentData: MarketData
 ): MarketPrediction[] {
   const predictions: MarketPrediction[] = [];
 

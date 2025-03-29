@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { getGasStats, getRecentTransfers } from "@/lib/blockchain";
+import { getRecentTransfers } from "@/lib/blockchain";
 
 // Transaction Volume types
 export interface VolumeData {
@@ -67,8 +67,7 @@ async function fetchData<T>(url: string, errorMessage: string): Promise<T> {
     const errorData = await response
       .json()
       .catch(() => ({ message: errorMessage }));
-    const error = new Error(errorData?.message || errorMessage);
-    toast.error(errorMessage);
+    toast.error(errorData.message || errorMessage);
     return null as unknown as T;
   }
 

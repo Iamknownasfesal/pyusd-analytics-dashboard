@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { Fish } from "lucide-react";
 import { LoadingFallback } from "@/components/ui/loading-fallback";
-import { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 
 interface MarketPrediction {
@@ -30,33 +29,6 @@ interface MarketPrediction {
   timeframe: string;
   confidence: "HIGH" | "MEDIUM" | "LOW";
   potentialImpact: "HIGH" | "MEDIUM" | "LOW";
-}
-
-interface PredictionResponse {
-  timestamp: string;
-  predictions: MarketPrediction[];
-  marketData: {
-    transactionCount: number;
-    volume: number;
-    whaleTransactions: number;
-    whaleVolume: number;
-    accumulationWallets: number;
-    distributionWallets: number;
-  };
-}
-
-// Function to get impact color
-function getImpactColor(impact: "HIGH" | "MEDIUM" | "LOW"): string {
-  switch (impact) {
-    case "HIGH":
-      return "text-red-500";
-    case "MEDIUM":
-      return "text-yellow-500";
-    case "LOW":
-      return "text-green-500";
-    default:
-      return "text-gray-500";
-  }
 }
 
 // Function to get confidence color
@@ -151,7 +123,6 @@ export function MarketPredictions() {
     const {
       transactionCount,
       volume,
-      whaleTransactions,
       whaleVolume,
       accumulationWallets,
       distributionWallets,

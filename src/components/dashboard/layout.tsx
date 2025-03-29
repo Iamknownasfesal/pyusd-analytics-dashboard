@@ -1,7 +1,6 @@
 import { Header } from "./header";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { toast } from "sonner";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

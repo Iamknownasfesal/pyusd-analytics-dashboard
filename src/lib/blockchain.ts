@@ -117,13 +117,6 @@ export async function getPYUSDBalance(address: string) {
   }
 }
 
-// Transfer event cache to avoid redundant fetches
-const transferCache = {
-  events: [] as ethers.Log[],
-  lastUpdated: 0,
-  latestBlock: 0,
-};
-
 // Fetch recent PYUSD transfers with optimized caching
 export async function getRecentTransfers(count = 5) {
   try {
@@ -138,7 +131,7 @@ export async function getRecentTransfers(count = 5) {
     const MAX_BLOCK_RANGE = 5;
 
     // Look back further to find enough transfers
-    let blockRanges = [];
+    const blockRanges = [];
     const MAX_LOOKBACK = 1000; // Maximum number of blocks to look back
     const startBlock = Math.max(0, currentBlock - MAX_LOOKBACK);
 

@@ -11,8 +11,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
   Legend,
   BarChart,
   Bar,
@@ -63,13 +61,6 @@ function getRiskLabel(score: number): string {
   if (score >= 60) return "Moderate Risk";
   if (score >= 40) return "Low Risk";
   return "Safe";
-}
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
 }
 
 function formatMonth(monthString: string): string {

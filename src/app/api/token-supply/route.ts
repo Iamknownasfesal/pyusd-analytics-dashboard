@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { initBigQueryClient } from "../bigQuery";
 import { PYUSD_CONTRACT_ADDRESS } from "@/lib/blockchain";
 
-export async function GET(request: Request) {
+export async function GET(_: Request) {
   try {
     const bigquery = initBigQueryClient();
 
