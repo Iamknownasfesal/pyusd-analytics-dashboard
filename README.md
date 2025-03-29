@@ -215,5 +215,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - PayPal USD (PYUSD)
 - Google Cloud Platform
 - Stackup
-- Next.js Team
-- shadcn/ui
