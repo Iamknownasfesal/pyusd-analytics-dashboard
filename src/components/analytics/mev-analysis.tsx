@@ -184,7 +184,7 @@ export function MEVAnalysis() {
 
       {/* Monthly Trends */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <DashboardCard title="Monthly MEV Activity" className="h-[400px]">
+        <DashboardCard title="Monthly MEV Activity" className="h-[450px]">
           <ResponsiveContainer width="100%" height={350}>
             <BarChart
               data={mevData.monthly_trends}
@@ -218,7 +218,7 @@ export function MEVAnalysis() {
           </ResponsiveContainer>
         </DashboardCard>
 
-        <DashboardCard title="Monthly Transaction Volume" className="h-[400px]">
+        <DashboardCard title="Monthly Transaction Volume" className="h-[450px]">
           <ResponsiveContainer width="100%" height={350}>
             <AreaChart
               data={mevData.monthly_trends}
