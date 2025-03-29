@@ -2,6 +2,9 @@
 
 A comprehensive real-time analytics dashboard for monitoring PayPal USD (PYUSD) stablecoin transactions on the Ethereum blockchain. This project is built as part of the Stackup, PayPal and Google Cloud Bounty Challenge.
 
+## Live Demo 👩🏽‍💻
+[Watch the app in action](https://youtu.be/yDuXLhD-kqo)
+
 ## Features
 
 - **Real-time PYUSD Transaction Monitoring**: Live updates of PYUSD transfers with automatic updates of new transactions
