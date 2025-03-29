@@ -4,7 +4,7 @@ A comprehensive real-time analytics dashboard for monitoring PayPal USD (PYUSD) 
 
 ## Features
 
-- **Real-time PYUSD Transaction Monitoring**: Live updates of PYUSD transfers with automatic notifications for new transactions
+- **Real-time PYUSD Transaction Monitoring**: Live updates of PYUSD transfers with automatic updates of new transactions
 - **Enhanced Analytics Dashboard**: Detailed transaction metrics, volume analysis, and token supply changes
 - **Top Holders Analysis**: Distribution visualization via Google BigQuery with percentage breakdowns
 - **Market Predictions**: AI-powered market movement predictions and suggested actions
