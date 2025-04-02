@@ -50,16 +50,10 @@ This dashboard uses Google Cloud services for blockchain data analysis:
 1. Create a Google Cloud Platform (GCP) account if you don't have one
 2. Create a new project in the GCP Console
 3. Enable the BigQuery API for your project
-4. Set up authentication using one of these methods:
+4. Add Ethereum Blockchain Data into your BigQuery
+5. Set up authentication using one of these methods:
 
-#### Option 1: Application Default Credentials (for development or when deployed on GCP)
-
-```bash
-# Install Google Cloud CLI
-gcloud auth application-default login
-```
-
-#### Option 2: Service Account Key (for production or non-GCP deployments)
+#### Option 1: Service Account Key (for development or non-GCP deployments)
 
 1. Create a service account in GCP Console
 2. Grant the service account BigQuery permissions (at least BigQuery Data Viewer)
@@ -70,7 +64,7 @@ gcloud auth application-default login
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/your-service-account-key.json
 ```
 
-#### Option 3: Environment Variables (for production)
+#### Option 2: Environment Variables (for production)
 
 For production deployments, you can set the Google Cloud credentials directly as environment variables:
 
